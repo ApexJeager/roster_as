@@ -11,7 +11,7 @@ export type GroupeType = 'Jaune' | 'Bleu' | 'Vert' | 'Rouge';
 
 export type OnboardingStatus = 'recrue' | 'astronaute_actif' | 'inactif';
 
-export type ReportStatus = 'en_attente' | 'archive';
+export type ReportStatus = 'en_attente' | 'archive' | 'correction_demandee';
 
 export interface UserProfile {
   id: string;
@@ -19,6 +19,7 @@ export interface UserProfile {
   full_name: string;
   role: RoleType;
   can_enter_data: boolean;
+  pin: string;
   assignment: {
     classe: ClasseType;
     groupe: GroupeType;
@@ -97,6 +98,7 @@ export interface Report {
   submitted_by: string;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  leader_note?: string;
 }
 
 export interface AppSettings {
@@ -119,6 +121,12 @@ export interface AuditLog {
 // Client status structures
 export interface ClientAuthPayload {
   currentUser: UserProfile | null;
+}
+
+export interface LoginSession {
+  token: string;
+  profile_id: string;
+  created_at: string;
 }
 
 // RLS Scope helper

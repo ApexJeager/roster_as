@@ -19,7 +19,8 @@ import {
   AppSettings,
   AuditLog,
   ClasseType,
-  GroupeType
+  GroupeType,
+  LoginSession
 } from './src/types';
 
 declare global {
@@ -55,11 +56,11 @@ const DEFAULT_GRADES: Grade[] = [
 ];
 
 const DEFAULT_PROFILES: UserProfile[] = [
-  { id: 'dev_user', email: 'dev@rapport-astronautes.org', full_name: 'Luc (Ghost Systems)', role: 'developer', can_enter_data: true, assignment: null },
-  { id: 'leader_user', email: 'president@rapport-astronautes.org', full_name: 'Pasteur Jean-Baptiste', role: 'leader', can_enter_data: false, assignment: null },
-  { id: 'pilote_a', email: 'pilote.aventuriers@rapport-astronautes.org', full_name: 'Frère Marc', role: 'pilote', can_enter_data: true, assignment: { classe: 'Aventuriers', groupe: 'Vert' } },
-  { id: 'pilote_b', email: 'pilote.aigles@rapport-astronautes.org', full_name: 'Sœur Élisabeth', role: 'pilote', can_enter_data: true, assignment: { classe: 'Aigles', groupe: 'Rouge' } },
-  { id: 'copilote_a', email: 'copilote.aventuriers@rapport-astronautes.org', full_name: 'Frère Samuel', role: 'copilote', can_enter_data: true, assignment: { classe: 'Aventuriers', groupe: 'Vert' } }
+  { id: 'dev_user', email: 'dev@rapport-astronautes.org', full_name: 'Luc (Ghost Systems)', role: 'developer', can_enter_data: true, pin: '0000', assignment: null },
+  { id: 'leader_user', email: 'president@rapport-astronautes.org', full_name: 'Pasteur Jean-Baptiste', role: 'leader', can_enter_data: false, pin: '1111', assignment: null },
+  { id: 'pilote_a', email: 'pilote.aventuriers@rapport-astronautes.org', full_name: 'Frère Marc', role: 'pilote', can_enter_data: true, pin: '2222', assignment: { classe: 'Aventuriers', groupe: 'Vert' } },
+  { id: 'pilote_b', email: 'pilote.aigles@rapport-astronautes.org', full_name: 'Sœur Élisabeth', role: 'pilote', can_enter_data: true, pin: '3333', assignment: { classe: 'Aigles', groupe: 'Rouge' } },
+  { id: 'copilote_a', email: 'copilote.aventuriers@rapport-astronautes.org', full_name: 'Frère Samuel', role: 'copilote', can_enter_data: true, pin: '4444', assignment: { classe: 'Aventuriers', groupe: 'Vert' } }
 ];
 
 // Seed 12 Astronautes spread across rooms with varied points
@@ -193,6 +194,7 @@ interface DatabaseSchema {
   reports: Report[];
   app_settings: AppSettings;
   audit_log: AuditLog[];
+  login_sessions?: LoginSession[];
 }
 
 let dbCache: DatabaseSchema | null = null;
@@ -214,7 +216,8 @@ function readDB(): DatabaseSchema {
         summer_pause: false,
         correction_window_hours: 48
       },
-      audit_log: []
+      audit_log: [],
+      login_sessions: []
     };
     fs.writeFileSync(DB_FILE, JSON.stringify(initData, null, 2), 'utf-8');
     dbCache = initData;
@@ -223,6 +226,29 @@ function readDB(): DatabaseSchema {
   try {
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
     dbCache = JSON.parse(raw);
+    
+    // Auto-migration for schema upgrades
+    let modified = false;
+    if (!dbCache!.login_sessions) {
+      dbCache!.login_sessions = [];
+      modified = true;
+    }
+    
+    // Ensure each profile has a pin
+    if (dbCache!.profiles) {
+      dbCache!.profiles.forEach(p => {
+        if (!p.pin) {
+          const defaultProf = DEFAULT_PROFILES.find(dp => dp.id === p.id);
+          p.pin = defaultProf?.pin || '2222';
+          modified = true;
+        }
+      });
+    }
+
+    if (modified) {
+      fs.writeFileSync(DB_FILE, JSON.stringify(dbCache, null, 2), 'utf-8');
+    }
+
     return dbCache!;
   } catch (err) {
     console.error('Error reading db.json, returning defaults', err);
@@ -239,7 +265,8 @@ function readDB(): DatabaseSchema {
         summer_pause: false,
         correction_window_hours: 48
       },
-      audit_log: []
+      audit_log: [],
+      login_sessions: []
     };
   }
 }
@@ -271,18 +298,53 @@ async function startServer() {
   const initialData = readDB();
   console.log(`Loaded ${initialData.astronautes.length} astronautes, ${initialData.scores.length} scores from DB.`);
 
-  // Custom Authentication and RLS Simulation middleware
-  // The client passes 'x-user-id' header representing the active session/switch role.
+  // Custom Authentication with PIN login support and secure mutating route validation
   app.use((req, res, next) => {
     const data = readDB();
-    const userId = req.headers['x-user-id'] as string || 'dev_user'; // fallback to dev_user for tests
-    const user = data.profiles.find(p => p.id === userId);
-    if (!user) {
-      // Create user if missing or fallback
-      req.user = data.profiles[0];
-    } else {
-      req.user = user;
+    const sessionToken = req.headers['x-session-token'] as string;
+    let authUser: UserProfile | null = null;
+
+    if (sessionToken) {
+      const foundSession = (data.login_sessions || []).find(s => s.token === sessionToken);
+      if (foundSession) {
+        const profile = data.profiles.find(p => p.id === foundSession.profile_id);
+        if (profile) {
+          authUser = profile;
+        }
+      }
     }
+
+    // Fallback block for development tests and backward compatibility if no token is provided but x-user-id exists
+    if (!authUser) {
+      const headerUserId = req.headers['x-user-id'] as string;
+      if (headerUserId) {
+        const profile = data.profiles.find(p => p.id === headerUserId);
+        if (profile) {
+          authUser = profile;
+        }
+      }
+    }
+
+    // Ultimate fallback to dev_user if absolute zero auth is provided (ensures robust initial state)
+    if (!authUser) {
+      authUser = data.profiles[0];
+    }
+
+    req.user = authUser;
+
+    // Mutating Endpoint Check: Any write operations MUST supply a valid token in login_sessions
+    const isWrite = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method);
+    // Ignore initial login endpoint and reset-db
+    if (isWrite && req.path !== '/api/login' && req.path !== '/api/admin/reset-db') {
+      if (!sessionToken) {
+        return res.status(401).json({ error: 'Token de session absent. Veuillez vous connecter.' });
+      }
+      const sessionExists = (data.login_sessions || []).some(s => s.token === sessionToken);
+      if (!sessionExists) {
+        return res.status(401).json({ error: 'Votre session a expiré ou est invalide. Veuillez vous reconnecter.' });
+      }
+    }
+
     next();
   });
 
@@ -861,6 +923,76 @@ async function startServer() {
     res.json(rep);
   });
 
+  // PIN LOGIN ENDPOINT (does not trigger mutating blocked action)
+  app.post('/api/login', (req, res) => {
+    const { profile_id, pin } = req.body;
+    if (!profile_id || !pin) {
+      return res.status(400).json({ error: 'ID de profil et code PIN requis.' });
+    }
+
+    const data = readDB();
+    const profile = data.profiles.find(p => p.id === profile_id);
+    if (!profile) {
+      return res.status(404).json({ error: 'Profil non trouvé.' });
+    }
+
+    if (profile.pin !== pin) {
+      return res.status(401).json({ error: 'Code PIN incorrect.' });
+    }
+
+    // Create session token
+    const token = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    const newSession: LoginSession = {
+      token,
+      profile_id,
+      created_at: new Date().toISOString()
+    };
+
+    if (!data.login_sessions) {
+      data.login_sessions = [];
+    }
+    data.login_sessions.push(newSession);
+    writeDB(data);
+
+    res.json({
+      profile,
+      token
+    });
+  });
+
+  // Demander une correction on reports
+  app.post('/api/reports/:id/correction', (req, res) => {
+    if (guardSummerPause(req, res)) return;
+    if (req.user.role !== 'developer' && req.user.role !== 'leader') {
+      return res.status(403).json({ error: 'Seul le président (Leader) peut demander des corrections.' });
+    }
+
+    const { leader_note } = req.body;
+    if (!leader_note || leader_note.trim() === '') {
+      return res.status(400).json({ error: 'Une note d\'explication est obligatoire.' });
+    }
+
+    const data = readDB();
+    const rep = data.reports.find(r => r.id === req.params.id);
+    if (!rep) {
+      return res.status(404).json({ error: 'Rapport non trouvé' });
+    }
+
+    rep.status = 'correction_demandee';
+    rep.leader_note = leader_note;
+    rep.reviewed_by = req.user.id;
+    rep.reviewed_at = new Date().toISOString();
+
+    // Unlock corresponding session for pilot editing
+    const session = data.sessions.find(s => s.id === rep.session_id);
+    if (session) {
+      session.locked_at = null; // unlock so pilote can edit scores again!
+    }
+
+    writeDB(data);
+    res.json(rep);
+  });
+
   // Class Migration Engine (Macro Tool) (C7-2)
   // Moves students to next level when they age or season starts
   // Pionniers -> Explorateurs -> Aventuriers -> Aigles -> (Archived/ 졸업)
@@ -960,6 +1092,44 @@ async function startServer() {
 
     writeDB(data);
     res.json(profile);
+  });
+
+  // Update PIN API (Developer only)
+  app.post('/api/admin/update-pin', (req, res) => {
+    if (guardSummerPause(req, res)) return;
+    if (req.user.role !== 'developer') {
+      return res.status(403).json({ error: 'Seul l\'ingénieur de Ghost Systems (Developer) peut modifier les codes PIN.' });
+    }
+
+    const { profile_id, pin } = req.body;
+    if (!profile_id || !pin || pin.length !== 4 || isNaN(Number(pin))) {
+      return res.status(400).json({ error: 'ID de profil requis et le PIN doit faire exactement 4 chiffres.' });
+    }
+
+    const data = readDB();
+    const profile = data.profiles.find(p => p.id === profile_id);
+    if (!profile) {
+      return res.status(404).json({ error: 'Profil non trouvé' });
+    }
+
+    profile.pin = pin;
+    
+    // Logs
+    const log: AuditLog = {
+      id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      actor_id: req.user.id,
+      action: 'UPDATE_PIN',
+      target_table: 'profiles',
+      target_id: profile.id,
+      old_value: { pin: '****' },
+      new_value: { pin: pin },
+      reason: `Mise à jour du code PIN de ${profile.full_name}`,
+      created_at: new Date().toISOString()
+    };
+    data.audit_log.unshift(log);
+
+    writeDB(data);
+    res.json({ success: true, profile });
   });
 
   // Audit Logs (Leader/Dev only)
