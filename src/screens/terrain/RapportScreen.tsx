@@ -35,6 +35,37 @@ export default function RapportScreen({
   const [obsContent, setObsContent] = useState('');
   const [discContent, setDiscContent] = useState('');
 
+  // Gemini AI Assistant states
+  const [keywordsLesson, setKeywordsLesson] = useState('');
+  const [keywordsObs, setKeywordsObs] = useState('');
+  const [keywordsDisc, setKeywordsDisc] = useState('');
+  const [geminiLoading, setGeminiLoading] = useState(false);
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+
+  const handleGenerateAiReport = async () => {
+    if (!keywordsLesson.trim() && !keywordsObs.trim()) {
+      showToast("Veuillez saisir au moins quelques mots clés de leçon ou d'observation.", "info");
+      return;
+    }
+    setGeminiLoading(true);
+    try {
+      const generated = await api.getPilotLessonHelper({
+        lesson_keywords: keywordsLesson,
+        observations_keywords: keywordsObs,
+        discipline_keywords: keywordsDisc
+      });
+      setLessonContent(generated.notes_lesson);
+      setObsContent(generated.notes_observations);
+      setDiscContent(generated.notes_discipline);
+      showToast("Rapport élégant rédigé avec succès par Gemini !", "success");
+      setShowAiAssistant(false);
+    } catch (err) {
+      showToast("Le service de rédaction assistée Gemini est indisponible.", "danger");
+    } finally {
+      setGeminiLoading(false);
+    }
+  };
+
   // Find cabin sessions
   const mySessions = useMemo(() => {
     return sessions
@@ -329,6 +360,71 @@ export default function RapportScreen({
           ) : (
             /* Open drafting form (en_attente/null) */
             <form onSubmit={handleSendReport} className="space-y-4">
+              {/* Gemini AI Pilot Assistant */}
+              <div id="gemini-pilot-assistant" className="bg-gradient-to-br from-slate-900 to-slate-950 border border-amber-500/15 p-4 rounded-xl shadow space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    <strong className="text-xs font-bold text-amber-400 font-mono tracking-wide uppercase">Assistant Cabine Gemini ✦</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiAssistant(!showAiAssistant)}
+                    className="text-xs text-slate-400 hover:text-white font-medium underline cursor-pointer"
+                  >
+                    {showAiAssistant ? "Masquer l'aide" : "Activer l'aide à la rédaction"}
+                  </button>
+                </div>
+                
+                {showAiAssistant && (
+                  <div className="space-y-3 pt-1">
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      Saisissez de simples mots-clés de votre après-midi. Notre IA <strong className="text-amber-400">Gemini-3.1-lite (Basse latence)</strong> s'occupe de rédiger un rapport théologique inspirant et des observations fluides.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Mots-clés Leçon</span>
+                        <input
+                          type="text"
+                          value={keywordsLesson}
+                          onChange={(e) => setKeywordsLesson(e.target.value)}
+                          placeholder="ex: David et Goliath, courage"
+                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white px-2.5 py-1.5 rounded outline-none focus:border-amber-500 placeholder:text-slate-700"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Mots-clés Attitude</span>
+                        <input
+                          type="text"
+                          value={keywordsObs}
+                          onChange={(e) => setKeywordsObs(e.target.value)}
+                          placeholder="ex: attentifs, bavardages"
+                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white px-2.5 py-1.5 rounded outline-none focus:border-amber-500 placeholder:text-slate-700"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Mots-clés Discipline</span>
+                        <input
+                          type="text"
+                          value={keywordsDisc}
+                          onChange={(e) => setKeywordsDisc(e.target.value)}
+                          placeholder="ex: Marc calmé après rappel"
+                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white px-2.5 py-1.5 rounded outline-none focus:border-amber-500 placeholder:text-slate-750"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={geminiLoading}
+                      onClick={handleGenerateAiReport}
+                      className="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-40 text-slate-950 font-extrabold text-[11px] py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      {geminiLoading ? "Rédaction intelligente en cours..." : "Rédiger automatiquement le Rapport ✨"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase block mb-1">
                   1. THÈME OU LEÇON ÉTUDIÉE *

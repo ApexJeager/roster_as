@@ -7,6 +7,9 @@ import TerrainMode from './modes/TerrainMode';
 import CommandMode from './modes/CommandMode';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import { RefreshCw, Sliders, LogOut } from 'lucide-react';
+import { onSnapshot, collection, doc } from 'firebase/firestore';
+import { db } from './lib/firebase';
+import { seedFirestoreIfEmpty } from './lib/firebase-seeder';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -94,6 +97,13 @@ export default function App() {
       const token = getSessionToken();
       const cachedProfile = getSessionProfile();
 
+      // Auto seed empty Firebase Firestore database (integrity safety check)
+      try {
+        await seedFirestoreIfEmpty();
+      } catch (err) {
+        console.warn("La vérification de peuplement de la base de données Firestore a levé une exception:", err);
+      }
+
       // Always load the profile list so the login page can be pre-rendered instantly
       try {
         const list = await api.getProfiles();
@@ -127,6 +137,66 @@ export default function App() {
 
     initSessionBoot();
   }, []);
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Attach real-time subscriptions across all synchronized collections!
+    const unsubs = [
+      onSnapshot(doc(db, 'app_settings', 'global'), (docSnap) => {
+        if (docSnap.exists()) {
+          setAppSettings(docSnap.data() as AppSettings);
+        }
+      }),
+      onSnapshot(collection(db, 'profiles'), (snap) => {
+        const list: UserProfile[] = [];
+        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as UserProfile));
+        setProfiles(list);
+      }),
+      onSnapshot(collection(db, 'astronautes'), (snap) => {
+        const list: Astronaute[] = [];
+        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Astronaute));
+        setAstronautes(list);
+      }),
+      onSnapshot(collection(db, 'sessions'), (snap) => {
+        const list: Session[] = [];
+        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Session));
+        setSessions(list);
+      }),
+      onSnapshot(collection(db, 'reports'), (snap) => {
+        const list: Report[] = [];
+        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Report));
+        setReports(list);
+      }),
+      onSnapshot(collection(db, 'grades'), (snap) => {
+        const list: Grade[] = [];
+        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Grade));
+        list.sort((a, b) => a.sort_order - b.sort_order);
+        setGrades(list);
+      }),
+      onSnapshot(collection(db, 'promotions'), (snap) => {
+        const list: Promotion[] = [];
+        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Promotion));
+        setPromotions(list);
+      }),
+      onSnapshot(collection(db, 'scores'), (snap) => {
+        const list: Score[] = [];
+        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Score));
+        setScores(list);
+      }),
+      onSnapshot(collection(db, 'audit_logs'), (snap) => {
+        const list: AuditLog[] = [];
+        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as AuditLog));
+        list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setAuditLogs(list);
+      })
+    ];
+
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, [currentUser]);
 
   // Post Login Success Router callback
   const handleLoginSuccess = async (profile: UserProfile, token: string) => {

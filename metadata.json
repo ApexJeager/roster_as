@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Cabine Pilotage ASBF",
+  "description": "Système complet de suivi en temps réel de l'onboarding, de la notation et des rapports de cabine pour l'équipage de l'ASBF.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

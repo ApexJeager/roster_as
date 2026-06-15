@@ -7,6 +7,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import { GoogleGenAI, Type } from '@google/genai';
 import {
   UserProfile,
   Astronaute,
@@ -1161,6 +1162,120 @@ async function startServer() {
     };
     writeDB(freshDb);
     res.json({ message: 'Base de données réinitialisée aux valeurs de démonstration.' });
+  });
+
+  // --- GEMINI INTELLIGENCE ASSIST ENDPOINTS ---
+
+  // 1. Pilot helper: Low latency lessons narrative writer
+  app.post('/api/gemini/pilot-helper', async (req, res) => {
+    const { lesson_keywords, observations_keywords, discipline_keywords } = req.body;
+    
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        console.warn("GEMINI_API_KEY is not defined. Returning smart mock simulation.");
+        return res.json({
+          notes_lesson: `[Intelligence Simulée] Thème: ${lesson_keywords || "Armure Spirituelle"}. Aujourd'hui, nous avons exploré comment équiper moralement nos astronautes de l'ASBF contre les épreuves. Enseignement dynamique.`,
+          notes_observations: `[Intelligence Simulée] Obs: ${observations_keywords || "Excellente écoute"}. Les enfants ont suivi avec attention l'animation et ont posé des questions d'approfondissement intéressantes.`,
+          notes_discipline: `[Intelligence Simulée] Discipline: ${discipline_keywords || "Aucun incident"}. Cadre respectueux apprécié de tous.`
+        });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const systemPrompt = `You are an expert French-speaking youth pastor and session companion.
+Take these draft lesson keywords and formulate a high-quality, inspiring and coherent report in French suited to Haiti's children church context.
+Your French must be natural, respectful, encouraging and grammatically perfect.
+
+Format your response strictly as a JSON object with three properties:
+- notes_lesson: "A structured, detailed summary narrative of the lesson taught"
+- notes_observations: "A coherent and comprehensive report of children's reactions, engagement, and positive milestones during this Friday session"
+- notes_discipline: "A caring, constructive wrap up of behavior, adjustments, or special discussions"
+
+Draft inputs:
+- Class Bible lesson theme/keywords: ${lesson_keywords || "Non spécifié"}
+- Behaviour/Observations: ${observations_keywords || "Non spécifié"}
+- Discipline discussions/Remonstrances: ${discipline_keywords || "Non spécifié"}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite', // low latency
+        contents: systemPrompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              notes_lesson: { type: Type.STRING },
+              notes_observations: { type: Type.STRING },
+              notes_discipline: { type: Type.STRING }
+            },
+            required: ['notes_lesson', 'notes_observations', 'notes_discipline']
+          }
+        }
+      });
+
+      const responseText = response.text;
+      if (!responseText) {
+        throw new Error("No text returned from Gemini model.");
+      }
+
+      const parsedJSON = JSON.parse(responseText.trim());
+      res.json(parsedJSON);
+    } catch (error: any) {
+      console.error("Gemini Pilot Helper execution error:", error);
+      res.json({
+        notes_lesson: `Thème abordé: ${lesson_keywords || 'Leçon de foi'}. (Note: Le service de rédaction automatique Gemini est temporairement indisponible, mais vos saisies de base ont été enregistrées).`,
+        notes_observations: observations_keywords || 'Les enfants ont écouté.',
+        notes_discipline: discipline_keywords || 'RAS.'
+      });
+    }
+  });
+
+  // 2. Leader Briefing: Command strategic insights builder
+  app.post('/api/gemini/leader-brief', async (req, res) => {
+    const { reports, astronautes } = req.body;
+    
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.json({
+          briefingHtml: "<p class='text-sm text-slate-400 italic'>Activer la clé d'API GEMINI_API_KEY dans les réglages système pour débloquer le rapport de commandement stratégique automatisé par l'IA.</p>"
+        });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+
+      const statsText = `Currently tracking ${astronautes?.length || 0} active astronauts.
+Past weekly reports submitted by pilots:
+${(reports || []).map((r: any, idx: number) => `Report #${idx + 1}:
+  Lesson: ${r.notes_lesson}
+  Observations: ${r.notes_observations}
+  Discipline Notes: ${r.notes_discipline || "None"}`).join('\n')}`;
+
+      const systemPrompt = `You are a strategic Command advisor for the President of the "Astronautes" youth ministry.
+You must synthesize the past lesson reports and roster size to write a beautiful, powerful and encouraging command report (Rapport de Commandement) in French.
+Do not output raw Markdown or wrapper code blocks. Output ONLY clean and elegant HTML (wrapped in divs, p, strong, and lists) styled with sleek modern layout structures.
+Section suggestions:
+1. "Etat Moral de l'Équipage" ( morale, attendance highlights)
+2. "Enseignement et Avancée Spirituelle" (summarizing what general themes were taught)
+3. "Points Vigilance de l'Amirauté" (discipline, and specific children actions)
+4. "Recommandation d'Action Pastorale" (concrete custom action for next Friday)
+
+Keep the writing encouraging, military-themed and professional French.
+Inputs:
+${statsText}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash', // high quality general tasks
+        contents: systemPrompt
+      });
+
+      const responseText = response.text || "<p>Erreur lors de la rédaction par l'IA.</p>";
+      res.json({ briefingHtml: responseText });
+    } catch (error) {
+      console.error("Gemini Leader Briefing execution error:", error);
+      res.json({ briefingHtml: "<p class='text-red-400 text-xs'>Échec de la rédaction du briefing par l'IA : " + String(error) + "</p>" });
+    }
   });
 
   // --- VITE MIDDLEWARE OR STATIC SERVING ---

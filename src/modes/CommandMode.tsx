@@ -19,6 +19,7 @@ import GroupBadge from '../components/GroupBadge';
 import EligibilityBadge from '../components/EligibilityBadge';
 import ScoreChecklist from '../components/ScoreChecklist';
 import RankTrack from '../components/RankTrack';
+import GestionPersonnel from '../components/GestionPersonnel';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -139,6 +140,23 @@ export default function CommandMode({
   const [migrationReason, setMigrationReason] = useState("Promotion annuelle de transition");
   const [migrationPreview, setMigrationPreview] = useState<any>(null);
   const [isMigrating, setIsMigrating] = useState(false);
+
+  // Gemini AI Strategic Briefing State
+  const [aiBriefing, setAiBriefing] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const handleGenerateAiBriefing = async () => {
+    setAiLoading(true);
+    try {
+      const res = await api.getLeaderDashboardBriefing({ reports, astronautes });
+      setAiBriefing(res.briefingHtml);
+      showToast("Briefing stratégique rédigé par Gemini !", "success");
+    } catch (err) {
+      showToast("Impossible de joindre Gemini pour le briefing.", "danger");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Profile assignment state
   const [assigningProfileId, setAssigningProfileId] = useState<string | null>(null);
@@ -1401,6 +1419,47 @@ export default function CommandMode({
         {/* TAB 6: STATISTIQUES (ANALYTICS) */}
         {activeTab === 'analytics' && (
           <div className="space-y-6">
+            {/* Briefing de Commandement Intelligent (Gemini AI) */}
+            <div id="gemini-commander-brief" className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-amber-500/20 p-6 rounded-2xl shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+                    <span className="text-xs font-mono font-bold tracking-widest text-amber-400 uppercase">Cabinet de Commandement • Gemini AI</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Rapport de Synthèse & Analyse Pastorale</h3>
+                  <p className="text-xs text-slate-400 max-w-2xl">
+                    Commandez une analyse stratégique basée sur les rapports de cours soumis et l'activation des grades. Idéal pour repérer les baisses de morale et guider l'action pastorale.
+                  </p>
+                </div>
+                <button
+                  id="generate-brief-btn"
+                  onClick={handleGenerateAiBriefing}
+                  disabled={aiLoading}
+                  className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 duration-150 disabled:opacity-50 shrink-0 self-start md:self-center"
+                >
+                  {aiLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Analyse pastorale...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Rédiger le Briefing
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {aiBriefing && (
+                <div className="mt-5 border-t border-slate-800 pt-5 text-slate-300">
+                  <div className="bg-slate-950/50 p-5 rounded-xl border border-slate-850 overflow-auto max-h-[400px] leading-relaxed select-text font-sans text-sm prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: aiBriefing }} />
+                </div>
+              )}
+            </div>
             {/* Overview Indicators */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow shadow-slate-950">
@@ -1547,114 +1606,12 @@ export default function CommandMode({
               )}
             </div>
 
-            {/* Assignments Matrix panel */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow">
-              <div className="border-b border-slate-800 pb-3 mb-1">
-                <h3 className="font-extrabold text-white text-base">Assignation des instructeurs (Pilotes & Copilotes)</h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Les instructeurs possèdent des rôles restreints de cabines de vol. Notez que seul le code PIN déverrouille l'accès.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 text-xs">
-                {allProfiles.map(p => {
-                  const isBeingEdited = assigningProfileId === p.id;
-                  
-                  return (
-                    <div key={p.id} className="p-3.5 bg-slate-950 rounded-xl border border-slate-850 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      <div>
-                        <strong className="text-white text-base block">{p.full_name}</strong>
-                        <span className="text-slate-450 mt-1 block">Rôle: <strong className="text-slate-350">{p.role}</strong> • Email: {p.email}</span>
-                        {p.assignment ? (
-                          <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
-                            <span className="text-[10px] bg-slate-900 text-amber-500 font-bold border border-slate-800 px-2 py-0.5 rounded leading-none">
-                              CABINE: {p.assignment.classe.toUpperCase()} {p.assignment.groupe.toUpperCase()}
-                            </span>
-                            <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border leading-none ${p.can_enter_data ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-rose-950 text-rose-400 border-rose-800'}`}>
-                              {p.can_enter_data ? 'Entrée autorisée' : 'Copilote Lecture Seule'}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 italic mt-1 lg:mt-0 font-medium block">Non affecté à une cabine d'enseignement</span>
-                        )}
-                      </div>
-
-                      {currentUser.role === 'developer' && (
-                        <div>
-                          {isBeingEdited ? (
-                            <div className="space-y-2 pb-1.5 pt-2">
-                              <div className="flex gap-2">
-                                <select
-                                  id={`assign-class-${p.id}`}
-                                  value={assignClass}
-                                  onChange={e => setAssignClass(e.target.value as ClasseType)}
-                                  className="bg-slate-900 border border-slate-800 px-2.5 py-1 text-xs rounded text-white"
-                                >
-                                  <option value="">-- CLASSE --</option>
-                                  <option value="Pionniers">Pionniers</option>
-                                  <option value="Explorateurs">Explorateurs</option>
-                                  <option value="Aventuriers">Aventuriers</option>
-                                  <option value="Aigles">Aigles</option>
-                                </select>
-
-                                <select
-                                  id={`assign-group-${p.id}`}
-                                  value={assignGroup}
-                                  onChange={e => setAssignGroup(e.target.value as GroupeType)}
-                                  className="bg-slate-900 border border-slate-800 px-2.5 py-1 text-xs rounded text-white"
-                                >
-                                  <option value="">-- UNITE --</option>
-                                  <option value="Vert">Vert</option>
-                                  <option value="Rouge">Rouge</option>
-                                  <option value="Bleu">Bleu</option>
-                                  <option value="Jaune">Jaune</option>
-                                </select>
-                              </div>
-
-                              <label className="flex items-center gap-1.5 text-xs text-slate-300 font-bold">
-                                <input
-                                  type="checkbox"
-                                  checked={assignCanEnter}
-                                  onChange={e => setAssignCanEnter(e.target.checked)}
-                                />
-                                <span>Autoriser modifications de pointage</span>
-                              </label>
-
-                              <div className="flex gap-2 justify-end">
-                                <button
-                                  onClick={() => setAssigningProfileId(null)}
-                                  className="text-xs text-slate-400 hover:text-white px-2.5 py-1 border border-slate-800 rounded"
-                                >
-                                  Annuler
-                                </button>
-                                <button
-                                  onClick={() => handleAssignInstructorsSubmit(p.id)}
-                                  className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1 rounded cursor-pointer"
-                                >
-                                  Enregistrer
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setAssigningProfileId(p.id);
-                                setAssignClass(p.assignment?.classe || '');
-                                setAssignGroup(p.assignment?.groupe || '');
-                                setAssignCanEnter(p.can_enter_data);
-                              }}
-                              className="text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded px-3 py-1.5 text-slate-300 cursor-pointer font-bold"
-                            >
-                              Éditer Cabine
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Assignments Matrix / Gestion du Personnel panel */}
+            <GestionPersonnel
+              allProfiles={allProfiles}
+              onRefresh={onRefresh}
+              showToast={showToast}
+            />
 
             {/* AUDIT LOG EVENTS */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow">

@@ -15,6 +15,51 @@ export default function LoginScreen({ allProfiles, onLoginSuccess }: LoginScreen
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [shake, setShake] = useState<boolean>(false);
+  const [googleAuthLoading, setGoogleAuthLoading] = useState<boolean>(false);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleAuthLoading(true);
+    setError(null);
+    try {
+      const { signInWithPopup } = await import('firebase/auth');
+      const { auth, googleProvider } = await import('../lib/firebase');
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      const email = userCredential.user.email;
+      if (!email) {
+        throw new Error("Impossible de récupérer l'adresse email de votre compte Google.");
+      }
+
+      // Find the profile in allProfiles matching this email
+      const matchedProfile = allProfiles.find(p => p.email.toLowerCase() === email.toLowerCase());
+      if (matchedProfile) {
+        // Authenticated! Call onLoginSuccess
+        const mockToken = 'google_token_' + Date.now();
+        onLoginSuccess(matchedProfile, mockToken);
+      } else {
+        // If they are justinberthonn@gmail.com, they should get immediate access as Developer
+        if (email.toLowerCase() === 'justinberthonn@gmail.com') {
+          const defaultAdminProfile: UserProfile = {
+            id: 'justin_admin',
+            email: 'justinberthonn@gmail.com',
+            full_name: 'Justin Berthonn',
+            role: 'developer',
+            can_enter_data: true,
+            pin: '9999',
+            assignment: null
+          };
+          const mockToken = 'google_token_' + Date.now();
+          onLoginSuccess(defaultAdminProfile, mockToken);
+        } else {
+          throw new Error(`Aucun profil d'équipage ASBF n'est lié à l'adresse email [${email}]. Veuillez l'ajouter ou utiliser le PIN.`);
+        }
+      }
+    } catch (err: any) {
+      console.error("Google sign in error:", err);
+      setError(err?.message || "Échec de l'authentification Google.");
+    } finally {
+      setGoogleAuthLoading(false);
+    }
+  };
 
   // Helper to fetch icon corresponding to roles
   const getIconForRole = (role: string) => {
@@ -145,6 +190,36 @@ export default function LoginScreen({ allProfiles, onLoginSuccess }: LoginScreen
             </button>
           ))}
         </div>
+
+        {/* OR Divider */}
+        <div className="flex items-center gap-3 py-1 text-slate-500 text-[10px] font-mono uppercase">
+          <div className="h-[1px] bg-slate-800 flex-1" />
+          <span>OU CONNEXION DIRECTE INTÉGRÉE</span>
+          <div className="h-[1px] bg-slate-800 flex-1" />
+        </div>
+
+        {/* Google Sign-in action */}
+        <button
+          onClick={handleGoogleSignIn}
+          disabled={googleAuthLoading}
+          className="w-full flex items-center justify-center gap-3 p-4 bg-white hover:bg-slate-50 border border-slate-350 text-slate-900 rounded-xl font-bold transition duration-150 active:scale-[0.98] cursor-pointer"
+        >
+          {googleAuthLoading ? (
+            <RefreshCw className="w-4 h-4 text-slate-700 animate-spin" />
+          ) : (
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.11C18.28 1.845 15.538 1 12.24 1c-6.07 0-11 4.93-11 11s4.93 11 11 11c6.34 0 10.55-4.465 10.55-10.735 0-.72-.08-1.27-.18-1.815H12.24z"/>
+            </svg>
+          )}
+          <span className="text-sm">{googleAuthLoading ? "Vérification cabine..." : "Se connecter via Google Workspace"}</span>
+        </button>
+
+        {/* Dynamic secure identity feedback loops */}
+        {error && !selectedProfile && (
+          <div className="p-3.5 bg-rose-950/60 border border-rose-900/40 text-rose-300 text-xs text-center rounded-xl font-bold leading-relaxed">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Footer Info */}

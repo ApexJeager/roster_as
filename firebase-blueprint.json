@@ -1,0 +1,198 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Cabin role identities of Ghost Systems staff and ASBF leaders.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "full_name": { "type": "string" },
+        "role": { "type": "string", "enum": ["developer", "leader", "pilote", "copilote"] },
+        "can_enter_data": { "type": "boolean" },
+        "pin": { "type": "string" },
+        "assignment": { "type": "object" }
+      },
+      "required": ["id", "email", "full_name", "role", "can_enter_data"]
+    },
+    "Astronaute": {
+      "title": "Astronaute",
+      "description": "Children profile being rated and monitored.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "first_name": { "type": "string" },
+        "last_name": { "type": "string" },
+        "birthdate": { "type": "string", "format": "date" },
+        "classe": { "type": "string" },
+        "groupe": { "type": "string" },
+        "status": { "type": "string", "enum": ["recrue", "astronaute_actif", "inactif"] },
+        "grand_total": { "type": "number" },
+        "legacy_source": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "first_name", "last_name", "birthdate", "classe", "groupe", "status", "grand_total"]
+    },
+    "Onboarding": {
+      "title": "Onboarding",
+      "description": "Onboarding milestones for a recruit astronaute.",
+      "type": "object",
+      "properties": {
+        "astronaute_id": { "type": "string" },
+        "fridays_done": { "type": "boolean" },
+        "devise": { "type": "boolean" },
+        "verset_officiel": { "type": "boolean" },
+        "livres_nt": { "type": "boolean" },
+        "completed_at": { "type": "string" }
+      },
+      "required": ["astronaute_id", "fridays_done", "devise", "verset_officiel", "livres_nt"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "Weekly Friday session tracking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "session_date": { "type": "string", "format": "date" },
+        "classe": { "type": "string" },
+        "groupe": { "type": "string" },
+        "locked_at": { "type": "string" },
+        "created_by": { "type": "string" }
+      },
+      "required": ["id", "session_date", "classe", "groupe"]
+    },
+    "Score": {
+      "title": "Score",
+      "description": "Friday checklist scores for one astronaute.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "session_id": { "type": "string" },
+        "astronaute_id": { "type": "string" },
+        "presence": { "type": "boolean" },
+        "ponctuel": { "type": "boolean" },
+        "bible": { "type": "boolean" },
+        "verset": { "type": "boolean" },
+        "proprete": { "type": "boolean" },
+        "echarpe": { "type": "boolean" },
+        "conduite": { "type": "boolean" },
+        "visiteurs": { "type": "number" },
+        "total_jour": { "type": "number" }
+      },
+      "required": ["id", "session_id", "astronaute_id", "presence", "total_jour"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Lesson and observations report submitted by the pilot.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "session_id": { "type": "string" },
+        "notes_lesson": { "type": "string" },
+        "notes_observations": { "type": "string" },
+        "notes_discipline": { "type": "string" },
+        "status": { "type": "string", "enum": ["en_attente", "archive", "correction_demandee"] },
+        "submitted_by": { "type": "string" },
+        "reviewed_by": { "type": "string" },
+        "reviewed_at": { "type": "string" },
+        "leader_note": { "type": "string" }
+      },
+      "required": ["id", "session_id", "notes_lesson", "notes_observations", "status"]
+    },
+    "Grade": {
+      "title": "Grade",
+      "description": "Exact military/astronaut ranks requirements.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "points_required": { "type": "number" },
+        "name": { "type": "string" },
+        "verses": { "type": "string" },
+        "sort_order": { "type": "number" }
+      },
+      "required": ["id", "points_required", "name", "verses", "sort_order"]
+    },
+    "Promotion": {
+      "title": "Promotion",
+      "description": "Indicates validated promotional steps achieved.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "astronaute_id": { "type": "string" },
+        "grade_id": { "type": "string" },
+        "validated_by": { "type": "string" },
+        "validated_at": { "type": "string" }
+      },
+      "required": ["id", "astronaute_id", "grade_id", "validated_by", "validated_at"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Global lockouts and variables of the system.",
+      "type": "object",
+      "properties": {
+        "summer_pause": { "type": "boolean" },
+        "correction_window_hours": { "type": "number" }
+      },
+      "required": ["summer_pause", "correction_window_hours"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Administrative audit histories of edits and overrides.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "actor_id": { "type": "string" },
+        "action": { "type": "string" },
+        "target_table": { "type": "string" },
+        "target_id": { "type": "string" },
+        "old_value": { "type": "object" },
+        "new_value": { "type": "object" },
+        "reason": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "actor_id", "action", "created_at"]
+    }
+  },
+  "firestore": {
+    "/profiles/{profileId}": {
+      "schema": "UserProfile",
+      "description": "Auth profiles registered for cockpit login."
+    },
+    "/app_settings/{settingsId}": {
+      "schema": "AppSettings",
+      "description": "System settings parameters, usually single 'global' document."
+    },
+    "/astronautes/{astronauteId}": {
+      "schema": "Astronaute",
+      "description": "Active and inactive children tracking records."
+    },
+    "/onboarding/{onboardingId}": {
+      "schema": "Onboarding",
+      "description": "Onboarding milestones linking to astronaute recruit ID."
+    },
+    "/sessions/{sessionId}": {
+      "schema": "Session",
+      "description": "Friday session sessions."
+    },
+    "/scores/{scoreId}": {
+      "schema": "Score",
+      "description": "Friday session points checklists per child."
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Cabin reports to be review/archived by president."
+    },
+    "/grades/{gradeId}": {
+      "schema": "Grade",
+      "description": "Static array list of ranks requirements."
+    },
+    "/promotions/{promotionId}": {
+      "schema": "Promotion",
+      "description": "Achieved promotional valid steps."
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Overridden points security logs."
+    }
+  }
+}

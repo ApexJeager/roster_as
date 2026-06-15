@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type RoleType = 'developer' | 'leader' | 'pilote' | 'copilote';
+export type RoleType = 'developer' | 'leader' | 'pilote' | 'copilote' | 'aide';
 
 export type ClasseType = 'Pionniers' | 'Explorateurs' | 'Aventuriers' | 'Aigles';
 
