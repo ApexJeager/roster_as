@@ -85,6 +85,7 @@ interface CommandModeProps {
   showToast: (msg: string, type: 'success' | 'danger' | 'info') => void;
   triggerCelebration: (title: string, subtitle: string, badgeText: string) => void;
   onSwitchMode?: () => void;
+  isOnline: boolean;
 }
 
 export default function CommandMode({
@@ -102,7 +103,8 @@ export default function CommandMode({
   onLogout,
   showToast,
   triggerCelebration,
-  onSwitchMode
+  onSwitchMode,
+  isOnline
 }: CommandModeProps) {
   
   // Navigation tabs
@@ -576,7 +578,13 @@ export default function CommandMode({
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono tracking-widest text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 uppercase">MODE COMMANDEMENT</span>
+              <span className="text-[10px] font-mono tracking-widest text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 uppercase flex items-center gap-1.5">
+                <span>MODE COMMANDEMENT</span>
+                <span 
+                  className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'bg-emerald-500 shadow-sm shadow-emerald-500/55 animate-pulse' : 'bg-red-500 shadow-sm shadow-red-500/55'}`} 
+                  title={isOnline ? "Base de données Firebase connectée" : "Connexion Firebase perdue (Hors-ligne)"}
+                />
+              </span>
               {onSwitchMode && (
                 <button
                   type="button"
@@ -1611,6 +1619,7 @@ export default function CommandMode({
               allProfiles={allProfiles}
               onRefresh={onRefresh}
               showToast={showToast}
+              currentUser={currentUser}
             />
 
             {/* AUDIT LOG EVENTS */}

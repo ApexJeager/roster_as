@@ -391,6 +391,132 @@ async function startServer() {
     res.json(data.profiles);
   });
 
+  app.post('/api/profiles', (req, res) => {
+    const isDev = req.user.role === 'developer' || (req.user.role as any) === 'Dev';
+    const isLeader = req.user.role === 'leader';
+
+    if (!isDev && !isLeader) {
+      return res.status(403).json({ error: 'Autorisation refusée.' });
+    }
+
+    const data = readDB();
+    const { email, full_name, role, classe, groupe, pin, can_enter_data } = req.body;
+
+    if (!email || !full_name || !role) {
+      return res.status(400).json({ error: 'Champs obligatoires manquants : email, full_name, role.' });
+    }
+
+    // Protection against privilege escalation: only Dev can assign Leader or Dev role
+    if (role === 'leader' || role === 'developer' || role === 'Dev') {
+      if (!isDev) {
+        return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut créer ou assigner des rôles Leader ou Dev." });
+      }
+    }
+
+    const emailTrim = email.trim().toLowerCase();
+    const exists = data.profiles.some(p => p.email.toLowerCase() === emailTrim);
+    if (exists) {
+      return res.status(400).json({ error: 'Cet email est déjà enregistré.' });
+    }
+
+    const newId = 'prof_' + Date.now();
+    const newProfile: UserProfile = {
+      id: newId,
+      email: email.trim(),
+      full_name: full_name.trim(),
+      role: role,
+      can_enter_data: !!can_enter_data,
+      pin: pin?.trim() || '0000',
+      assignment: classe && groupe ? { classe, groupe } : null
+    };
+
+    data.profiles.push(newProfile);
+    writeDB(data);
+
+    res.status(201).json(newProfile);
+  });
+
+  app.put('/api/profiles/:id', (req, res) => {
+    const isDev = req.user.role === 'developer' || (req.user.role as any) === 'Dev';
+    const isLeader = req.user.role === 'leader';
+
+    if (!isDev && !isLeader) {
+      return res.status(403).json({ error: 'Autorisation refusée.' });
+    }
+
+    const { id } = req.params;
+    const { role, full_name, assignment, can_enter_data } = req.body;
+
+    const data = readDB();
+    const idx = data.profiles.findIndex(p => p.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: "Profil non trouvé dans la base locale." });
+    }
+
+    const profile = data.profiles[idx];
+
+    // Protection against privilege escalation when assigning higher roles
+    if (role && (role === 'leader' || role === 'developer' || role === 'Dev')) {
+      if (!isDev) {
+        return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut élever un rôle au niveau Leader ou Dev." });
+      }
+    }
+
+    // Protection against modifying already existing Leader or Dev roles
+    if (profile.role === 'leader' || profile.role === 'developer' || (profile.role as any) === 'Dev') {
+      if (!isDev) {
+        return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut modifier un profil Leader ou Dev." });
+      }
+    }
+
+    if (role !== undefined) profile.role = role;
+    if (full_name !== undefined) profile.full_name = full_name;
+    if (assignment !== undefined) profile.assignment = assignment;
+    if (can_enter_data !== undefined) profile.can_enter_data = !!can_enter_data;
+
+    writeDB(data);
+
+    console.log(`[BACKEND SHADOW SYSTEMS] Profile updated: ${profile.email}`);
+
+    res.json({
+      success: true,
+      message: `Profil de ${profile.full_name} mis à jour avec succès.`,
+      profile
+    });
+  });
+
+  app.delete('/api/profiles/:id', (req, res) => {
+    // Verify requester role is developer (Dev)
+    if (req.user.role !== 'developer' && (req.user.role as any) !== 'Dev') {
+      return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut supprimer un membre du personnel." });
+    }
+
+    const { id } = req.params;
+    const data = readDB();
+
+    const idx = data.profiles.findIndex(p => p.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: "Profil non trouvé dans la base locale." });
+    }
+
+    const targetUser = data.profiles[idx];
+    data.profiles.splice(idx, 1);
+
+    // Filter login sessions
+    if (data.login_sessions) {
+      data.login_sessions = data.login_sessions.filter(s => s.profile_id !== id);
+    }
+
+    writeDB(data);
+
+    console.log(`[BACKEND SHADOW SYSTEMS] Dev deleted user: ${targetUser.email} / ID: ${id}`);
+
+    res.json({
+      success: true,
+      message: `Profil de ${targetUser.full_name} supprimé avec succès de la base et de la synchronisation Auth.`
+    });
+  });
+
   // App Settings APIs
   app.get('/api/app-settings', (req, res) => {
     const data = readDB();

@@ -10,6 +10,17 @@ import { RefreshCw, Sliders, LogOut } from 'lucide-react';
 import { onSnapshot, collection, doc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { seedFirestoreIfEmpty } from './lib/firebase-seeder';
+import {
+  useRealtimeUsers,
+  useRealtimeAstronautes,
+  useRealtimeSessions,
+  useRealtimeReports,
+  useRealtimeGrades,
+  useRealtimePromotions,
+  useRealtimeScores,
+  useRealtimeAppSettings,
+  useRealtimeAuditLogs
+} from './hooks/useRealtimeData';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -23,9 +34,79 @@ export default function App() {
   const [scores, setScores] = useState<Score[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
+  const { users: liveProfiles, loading: usersLoading } = useRealtimeUsers();
+  const { appSettings: liveSettings, loading: settingsLoading } = useRealtimeAppSettings();
+  const { astronautes: liveAstronautes, loading: astrosLoading } = useRealtimeAstronautes();
+  const { sessions: liveSessions, loading: sessionsLoading } = useRealtimeSessions();
+  const { reports: liveReports, loading: reportsLoading } = useRealtimeReports();
+  const { grades: liveGrades, loading: gradesLoading } = useRealtimeGrades();
+  const { promotions: livePromotions, loading: promotionsLoading } = useRealtimePromotions();
+  const { scores: liveScores, loading: scoresLoading } = useRealtimeScores();
+  const { auditLogs: liveAuditLogs, loading: logsLoading } = useRealtimeAuditLogs();
+
+  const isAnyCollectionLoading = usersLoading || settingsLoading || astrosLoading || sessionsLoading || reportsLoading || gradesLoading || promotionsLoading || scoresLoading || logsLoading;
+
+  // Synchronize realtime live changes to local state
+  useEffect(() => {
+    if (!usersLoading) setProfiles(liveProfiles);
+  }, [liveProfiles, usersLoading]);
+
+  useEffect(() => {
+    if (!settingsLoading) setAppSettings(liveSettings);
+  }, [liveSettings, settingsLoading]);
+
+  useEffect(() => {
+    if (!astrosLoading) setAstronautes(liveAstronautes);
+  }, [liveAstronautes, astrosLoading]);
+
+  useEffect(() => {
+    if (!sessionsLoading) setSessions(liveSessions);
+  }, [liveSessions, sessionsLoading]);
+
+  useEffect(() => {
+    if (!reportsLoading) setReports(liveReports);
+  }, [liveReports, reportsLoading]);
+
+  useEffect(() => {
+    if (!gradesLoading) setGrades(liveGrades);
+  }, [liveGrades, gradesLoading]);
+
+  useEffect(() => {
+    if (!promotionsLoading) setPromotions(livePromotions);
+  }, [livePromotions, promotionsLoading]);
+
+  useEffect(() => {
+    if (!scoresLoading) setScores(liveScores);
+  }, [liveScores, scoresLoading]);
+
+  useEffect(() => {
+    if (!logsLoading) setAuditLogs(liveAuditLogs);
+  }, [liveAuditLogs, logsLoading]);
+
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCheckingToken, setIsCheckingToken] = useState(true);
   const [activeMode, setActiveMode] = useState<'terrain' | 'command'>('terrain');
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  // Monitor online status to notify users about Firebase sync stability
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      showToast("Connexion Internet rétablie. Synchronisation de la base de données Firebase active.", "success");
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      showToast("Connexion Internet perdue. Vous travaillez actuellement en mode hors-ligne.", "danger");
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Celebration state
   const [celebration, setCelebration] = useState<{
@@ -138,65 +219,7 @@ export default function App() {
     initSessionBoot();
   }, []);
 
-  // Real-time synchronization
-  useEffect(() => {
-    if (!currentUser) return;
-
-    // Attach real-time subscriptions across all synchronized collections!
-    const unsubs = [
-      onSnapshot(doc(db, 'app_settings', 'global'), (docSnap) => {
-        if (docSnap.exists()) {
-          setAppSettings(docSnap.data() as AppSettings);
-        }
-      }),
-      onSnapshot(collection(db, 'profiles'), (snap) => {
-        const list: UserProfile[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as UserProfile));
-        setProfiles(list);
-      }),
-      onSnapshot(collection(db, 'astronautes'), (snap) => {
-        const list: Astronaute[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Astronaute));
-        setAstronautes(list);
-      }),
-      onSnapshot(collection(db, 'sessions'), (snap) => {
-        const list: Session[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Session));
-        setSessions(list);
-      }),
-      onSnapshot(collection(db, 'reports'), (snap) => {
-        const list: Report[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Report));
-        setReports(list);
-      }),
-      onSnapshot(collection(db, 'grades'), (snap) => {
-        const list: Grade[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Grade));
-        list.sort((a, b) => a.sort_order - b.sort_order);
-        setGrades(list);
-      }),
-      onSnapshot(collection(db, 'promotions'), (snap) => {
-        const list: Promotion[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Promotion));
-        setPromotions(list);
-      }),
-      onSnapshot(collection(db, 'scores'), (snap) => {
-        const list: Score[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Score));
-        setScores(list);
-      }),
-      onSnapshot(collection(db, 'audit_logs'), (snap) => {
-        const list: AuditLog[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as AuditLog));
-        list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        setAuditLogs(list);
-      })
-    ];
-
-    return () => {
-      unsubs.forEach((unsub) => unsub());
-    };
-  }, [currentUser]);
+  // Real-time synchronization is handled perfectly via separate custom hooks
 
   // Post Login Success Router callback
   const handleLoginSuccess = async (profile: UserProfile, token: string) => {
@@ -243,6 +266,51 @@ export default function App() {
     );
   }
 
+  // Gracious French loading state using custom skeleton loaders
+  if (isAnyCollectionLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-between text-slate-100 p-6 font-sans">
+        <header className="bg-slate-900 border-b border-slate-800 shadow px-6 py-4 animate-pulse rounded-xl">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="space-y-2">
+              <div className="h-4 w-32 bg-slate-800 rounded"></div>
+              <div className="h-6 w-64 bg-slate-800 rounded"></div>
+            </div>
+            <div className="h-10 w-24 bg-slate-800 rounded-lg"></div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl w-full mx-auto mt-8 flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-6">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4 animate-pulse">
+              <div className="h-5 w-1/3 bg-slate-800 rounded"></div>
+              <div className="h-4 w-full bg-slate-800 rounded"></div>
+              <div className="h-32 bg-slate-800 rounded-lg"></div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4 animate-pulse">
+              <div className="h-5 w-1/4 bg-slate-800 rounded"></div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="h-10 bg-slate-800 rounded"></div>
+                <div className="h-10 bg-slate-800 rounded"></div>
+                <div className="h-10 bg-slate-800 rounded"></div>
+                <div className="h-10 bg-slate-800 rounded"></div>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4 animate-pulse">
+              <div className="h-5 w-1/2 bg-slate-800 rounded"></div>
+              <div className="h-20 bg-slate-800 rounded-lg"></div>
+              <div className="h-20 bg-slate-800 rounded-lg"></div>
+            </div>
+          </div>
+        </main>
+
+        <footer className="max-w-7xl w-full mx-auto mt-8 h-10 bg-slate-900 border border-slate-800 rounded-lg animate-pulse"></footer>
+      </div>
+    );
+  }
+
   return (
     <div className="relative font-sans antialiased min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
       {/* Toast Alert Portal Box (Group C8) */}
@@ -273,6 +341,7 @@ export default function App() {
           showToast={showToast}
           triggerCelebration={triggerCelebration}
           onSwitchMode={() => setActiveMode('command')}
+          isOnline={isOnline}
         />
       ) : (
         <CommandMode
@@ -291,6 +360,7 @@ export default function App() {
           showToast={showToast}
           triggerCelebration={triggerCelebration}
           onSwitchMode={() => setActiveMode('terrain')}
+          isOnline={isOnline}
         />
       )}
 

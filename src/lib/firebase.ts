@@ -1,7 +1,20 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import firebaseConfigJson from '../../firebase-applet-config.json';
+
+// Support both standard Vite environment variables and requested Next.js layouts with seamless JSON fallback
+const metaObj = (import.meta as any);
+const firebaseConfig = {
+  apiKey: (metaObj.env?.VITE_FIREBASE_API_KEY || metaObj.env?.NEXT_PUBLIC_FIREBASE_API_KEY || firebaseConfigJson.apiKey) as string,
+  authDomain: (metaObj.env?.VITE_FIREBASE_AUTH_DOMAIN || metaObj.env?.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || firebaseConfigJson.authDomain) as string,
+  projectId: (metaObj.env?.VITE_FIREBASE_PROJECT_ID || metaObj.env?.NEXT_PUBLIC_FIREBASE_PROJECT_ID || firebaseConfigJson.projectId) as string,
+  storageBucket: (metaObj.env?.VITE_FIREBASE_STORAGE_BUCKET || metaObj.env?.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || firebaseConfigJson.storageBucket) as string,
+  messagingSenderId: (metaObj.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || metaObj.env?.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigJson.messagingSenderId) as string,
+  appId: (metaObj.env?.VITE_FIREBASE_APP_ID || metaObj.env?.NEXT_PUBLIC_FIREBASE_APP_ID || firebaseConfigJson.appId) as string,
+  measurementId: (metaObj.env?.VITE_FIREBASE_MEASUREMENT_ID || metaObj.env?.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || firebaseConfigJson.measurementId || '') as string,
+  firestoreDatabaseId: (metaObj.env?.VITE_FIREBASE_FIRESTORE_DATABASE_ID || metaObj.env?.NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID || firebaseConfigJson.firestoreDatabaseId) as string,
+};
 
 // Initialize the Firebase app
 const app = initializeApp(firebaseConfig);

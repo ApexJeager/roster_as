@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserProfile, AppSettings, Astronaute, Session, Report, Grade, Promotion } from '../types';
+import { UserProfile, AppSettings, Astronaute, Session, Report, Grade, Promotion, ClasseType, GroupeType } from '../types';
 import PointageScreen from '../screens/terrain/PointageScreen';
 import MesEnfantsScreen from '../screens/terrain/MesEnfantsScreen';
 import RapportScreen from '../screens/terrain/RapportScreen';
@@ -19,6 +19,7 @@ interface TerrainModeProps {
   showToast: (msg: string, type: 'success' | 'danger' | 'info') => void;
   triggerCelebration: (title: string, subtitle: string, badgeText: string) => void;
   onSwitchMode?: () => void;
+  isOnline: boolean;
 }
 
 export default function TerrainMode({
@@ -33,12 +34,30 @@ export default function TerrainMode({
   onLogout,
   showToast,
   triggerCelebration,
-  onSwitchMode
+  onSwitchMode,
+  isOnline
 }: TerrainModeProps) {
   const [activeTab, setActiveTab] = useState<TerrainTabType>('pointage');
 
-  const myClass = currentUser.assignment?.classe || 'Aventuriers';
-  const myGroup = currentUser.assignment?.groupe || 'Vert';
+  // Check if role is developer (Dev)
+  const isDev = currentUser.role === 'developer' || (currentUser.role as any) === 'Dev';
+
+  const [devClass, setDevClass] = useState<ClasseType>('Aventuriers');
+  const [devGroup, setDevGroup] = useState<GroupeType>('Vert');
+
+  const myClass = isDev ? devClass : (currentUser.assignment?.classe || 'Aventuriers');
+  const myGroup = isDev ? devGroup : (currentUser.assignment?.groupe || 'Vert');
+
+  // Dynamic prop override so child components naturally receive the selected coordinator
+  const customUser = React.useMemo(() => {
+    return {
+      ...currentUser,
+      assignment: {
+        classe: myClass,
+        groupe: myGroup
+      }
+    };
+  }, [currentUser, myClass, myGroup]);
 
   // Toggle user permissions/switch mode shortcut
   const canSwitchMode = currentUser.role === 'developer' || currentUser.role === 'leader';
@@ -58,7 +77,13 @@ export default function TerrainMode({
               {myGroup[0]}
             </div>
             <div>
-              <p className="text-[10px] font-mono font-bold text-amber-500 tracking-wider leading-none uppercase">MODE TERRAIN</p>
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="text-[10px] font-mono font-bold text-amber-500 tracking-wider uppercase">MODE TERRAIN</span>
+                <span 
+                  className={`w-2 h-2 rounded-full inline-block ${isOnline ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse' : 'bg-red-500 shadow-sm shadow-red-500/50'}`}
+                  title={isOnline ? 'Base de données Firebase connectée' : 'Connexion Firebase perdue (Hors-ligne)'}
+                />
+              </div>
               <h2 className="text-sm font-extrabold text-white leading-tight mt-0.5">
                 {currentUser.full_name} • {myClass}
               </h2>
@@ -89,9 +114,49 @@ export default function TerrainMode({
 
       {/* Main workspace (centered on phone screen layout) */}
       <main className="flex-1 max-w-md w-full mx-auto p-4 pb-20 overflow-y-auto">
+        {/* DEV ONLY CABIN SELECTION OVERRIDE DROPDOWN BOX */}
+        {isDev && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 shadow space-y-2 select-none text-left" id="dev-cabin-selector">
+            <span className="text-[10px] font-mono font-black text-amber-500 tracking-widest uppercase block">🛠️ OPTIONS PILOTE DE VOL (DÉVELOPPEUR)</span>
+            <p className="text-[10px] text-slate-400">
+              Sélectionnez ci-dessous la cabine que vous co-pilotez ce vendredi. Tout l'affichage, les pointages et les rapports viseront instantanément votre choix.
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <label className="text-[9px] font-mono text-slate-500 block mb-1">CABINE (CLASSE)</label>
+                <select 
+                  id="dev-class-dropdown"
+                  value={devClass}
+                  onChange={(e) => setDevClass(e.target.value as ClasseType)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+                >
+                  <option value="Pionniers">Pionniers (4-6 ans)</option>
+                  <option value="Explorateurs">Explorateurs (7-8 ans)</option>
+                  <option value="Aventuriers">Aventuriers (9-11 ans)</option>
+                  <option value="Aigles">Aigles (12-14 ans)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[9px] font-mono text-slate-500 block mb-1">GROUPE / UNITÉ</label>
+                <select 
+                  id="dev-group-dropdown"
+                  value={devGroup}
+                  onChange={(e) => setDevGroup(e.target.value as GroupeType)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+                >
+                  <option value="Jaune">Jaune</option>
+                  <option value="Bleu">Bleu</option>
+                  <option value="Vert">Vert</option>
+                  <option value="Rouge">Rouge</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'pointage' && (
           <PointageScreen
-            currentUser={currentUser}
+            currentUser={customUser}
             appSettings={appSettings}
             astronautes={astronautes}
             sessions={sessions}
@@ -102,7 +167,7 @@ export default function TerrainMode({
         
         {activeTab === 'enfants' && (
           <MesEnfantsScreen
-            currentUser={currentUser}
+            currentUser={customUser}
             astronautes={astronautes}
             grades={grades}
             promotions={promotions}
@@ -114,7 +179,7 @@ export default function TerrainMode({
 
         {activeTab === 'rapport' && (
           <RapportScreen
-            currentUser={currentUser}
+            currentUser={customUser}
             appSettings={appSettings}
             astronautes={astronautes}
             sessions={sessions}

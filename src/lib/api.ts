@@ -620,6 +620,36 @@ export const api = {
     return { success: true };
   },
 
+  createProfile: async (data: {
+    email: string;
+    full_name: string;
+    role: any;
+    classe: string | null;
+    groupe: string | null;
+    pin: string;
+    can_enter_data: boolean;
+  }): Promise<UserProfile> => {
+    const qExists = query(collection(db, 'profiles'), where('email', '==', data.email.trim()));
+    const snapExists = await getDocs(qExists);
+    if (!snapExists.empty) {
+      throw new Error(`L'adresse email "${data.email}" est déjà enregistrée pour un autre membre du personnel.`);
+    }
+
+    const newId = 'prof_' + Date.now();
+    const newProfile: UserProfile = {
+      id: newId,
+      email: data.email.trim(),
+      full_name: data.full_name.trim(),
+      role: data.role,
+      can_enter_data: data.can_enter_data,
+      pin: data.pin.trim() || '0000',
+      assignment: data.classe && data.groupe ? { classe: data.classe as any, groupe: data.groupe as any } : null
+    };
+
+    await setDoc(doc(db, 'profiles', newId), newProfile);
+    return newProfile;
+  },
+
   resetDb: async (): Promise<any> => {
     // For safety, clear collections. Since users like to seed, let's re-run seeder inside seeder!
     const { seedFirestoreIfEmpty } = await import('./firebase-seeder');
