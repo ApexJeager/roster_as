@@ -189,6 +189,16 @@ export default function GestionPersonnel({
   };
 
   const handleDeleteProfile = async (profileId: string) => {
+    const profile = allProfiles.find(p => p.id === profileId);
+    if (profile && (profile.role === 'developer' || (profile.role as any) === 'Dev')) {
+      const devCount = allProfiles.filter(p => p.role === 'developer' || (p.role as any) === 'Dev').length;
+      if (devCount <= 1) {
+        showToast("Impossible de supprimer le compte GHOST SYSTEMS. C'est le dernier profil Dev.", "danger");
+        setProfileToDelete(null);
+        return;
+      }
+    }
+
     setDeletingProfiles((prev) => ({ ...prev, [profileId]: true }));
     try {
       // 1. Delete from Firestore profiles collection using client api or direct deleteDoc
@@ -553,8 +563,15 @@ export default function GestionPersonnel({
                       id={`gp-delete-btn-${p.id}`}
                       type="button"
                       onClick={() => setProfileToDelete(p)}
-                      disabled={deletingProfiles[p.id]}
-                      className="text-xs font-bold px-3.5 py-2 bg-red-600 hover:bg-red-500 hover:shadow-md text-white rounded-lg flex items-center gap-1.5 transition duration-150 cursor-pointer"
+                      disabled={deletingProfiles[p.id] || (currentUser.id === p.id) || ((p.role === 'developer' || (p.role as any) === 'Dev') && allProfiles.filter(x => x.role === 'developer' || (x.role as any) === 'Dev').length <= 1)}
+                      title={
+                        currentUser.id === p.id 
+                          ? "Vous ne pouvez pas supprimer votre propre profil." 
+                          : ((p.role === 'developer' || (p.role as any) === 'Dev') && allProfiles.filter(x => x.role === 'developer' || (x.role as any) === 'Dev').length <= 1)
+                          ? "Impossible de supprimer le seul compte Dev restant."
+                          : "Supprimer ce membre"
+                      }
+                      className={`text-xs font-bold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition duration-150 ${deletingProfiles[p.id] || currentUser.id === p.id || ((p.role === 'developer' || (p.role as any) === 'Dev') && allProfiles.filter(x => x.role === 'developer' || (x.role as any) === 'Dev').length <= 1) ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 hover:shadow-md text-white cursor-pointer'}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Supprimer</span>

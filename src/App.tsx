@@ -34,54 +34,54 @@ export default function App() {
   const [scores, setScores] = useState<Score[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
-  const { users: liveProfiles, loading: usersLoading } = useRealtimeUsers();
-  const { appSettings: liveSettings, loading: settingsLoading } = useRealtimeAppSettings();
-  const { astronautes: liveAstronautes, loading: astrosLoading } = useRealtimeAstronautes();
-  const { sessions: liveSessions, loading: sessionsLoading } = useRealtimeSessions();
-  const { reports: liveReports, loading: reportsLoading } = useRealtimeReports();
-  const { grades: liveGrades, loading: gradesLoading } = useRealtimeGrades();
-  const { promotions: livePromotions, loading: promotionsLoading } = useRealtimePromotions();
-  const { scores: liveScores, loading: scoresLoading } = useRealtimeScores();
-  const { auditLogs: liveAuditLogs, loading: logsLoading } = useRealtimeAuditLogs();
+  const { users: liveProfiles, loading: usersLoading } = useRealtimeUsers(currentUser);
+  const { appSettings: liveSettings, loading: settingsLoading } = useRealtimeAppSettings(currentUser);
+  const { astronautes: liveAstronautes, loading: astrosLoading } = useRealtimeAstronautes(currentUser);
+  const { sessions: liveSessions, loading: sessionsLoading } = useRealtimeSessions(currentUser);
+  const { reports: liveReports, loading: reportsLoading } = useRealtimeReports(currentUser);
+  const { grades: liveGrades, loading: gradesLoading } = useRealtimeGrades(currentUser);
+  const { promotions: livePromotions, loading: promotionsLoading } = useRealtimePromotions(currentUser);
+  const { scores: liveScores, loading: scoresLoading } = useRealtimeScores(currentUser);
+  const { auditLogs: liveAuditLogs, loading: logsLoading } = useRealtimeAuditLogs(currentUser);
 
-  const isAnyCollectionLoading = usersLoading || settingsLoading || astrosLoading || sessionsLoading || reportsLoading || gradesLoading || promotionsLoading || scoresLoading || logsLoading;
+  const isAnyCollectionLoading = currentUser ? (usersLoading || settingsLoading || astrosLoading || sessionsLoading || reportsLoading || gradesLoading || promotionsLoading || scoresLoading || logsLoading) : false;
 
   // Synchronize realtime live changes to local state
   useEffect(() => {
-    if (!usersLoading) setProfiles(liveProfiles);
-  }, [liveProfiles, usersLoading]);
+    if (currentUser && !usersLoading) setProfiles(liveProfiles);
+  }, [liveProfiles, usersLoading, currentUser]);
 
   useEffect(() => {
-    if (!settingsLoading) setAppSettings(liveSettings);
-  }, [liveSettings, settingsLoading]);
+    if (currentUser && !settingsLoading) setAppSettings(liveSettings);
+  }, [liveSettings, settingsLoading, currentUser]);
 
   useEffect(() => {
-    if (!astrosLoading) setAstronautes(liveAstronautes);
-  }, [liveAstronautes, astrosLoading]);
+    if (currentUser && !astrosLoading) setAstronautes(liveAstronautes);
+  }, [liveAstronautes, astrosLoading, currentUser]);
 
   useEffect(() => {
-    if (!sessionsLoading) setSessions(liveSessions);
-  }, [liveSessions, sessionsLoading]);
+    if (currentUser && !sessionsLoading) setSessions(liveSessions);
+  }, [liveSessions, sessionsLoading, currentUser]);
 
   useEffect(() => {
-    if (!reportsLoading) setReports(liveReports);
-  }, [liveReports, reportsLoading]);
+    if (currentUser && !reportsLoading) setReports(liveReports);
+  }, [liveReports, reportsLoading, currentUser]);
 
   useEffect(() => {
-    if (!gradesLoading) setGrades(liveGrades);
-  }, [liveGrades, gradesLoading]);
+    if (currentUser && !gradesLoading) setGrades(liveGrades);
+  }, [liveGrades, gradesLoading, currentUser]);
 
   useEffect(() => {
-    if (!promotionsLoading) setPromotions(livePromotions);
-  }, [livePromotions, promotionsLoading]);
+    if (currentUser && !promotionsLoading) setPromotions(livePromotions);
+  }, [livePromotions, promotionsLoading, currentUser]);
 
   useEffect(() => {
-    if (!scoresLoading) setScores(liveScores);
-  }, [liveScores, scoresLoading]);
+    if (currentUser && !scoresLoading) setScores(liveScores);
+  }, [liveScores, scoresLoading, currentUser]);
 
   useEffect(() => {
-    if (!logsLoading) setAuditLogs(liveAuditLogs);
-  }, [liveAuditLogs, logsLoading]);
+    if (currentUser && !logsLoading) setAuditLogs(liveAuditLogs);
+  }, [liveAuditLogs, logsLoading, currentUser]);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCheckingToken, setIsCheckingToken] = useState(true);
@@ -193,19 +193,36 @@ export default function App() {
 
       if (token && cachedProfile) {
         try {
-          // Double verify session with backend
-          const user = await api.getCurrentUser();
-          setCurrentUser(user);
-          
-          // Setup active role mode
-          if (user.role === 'developer' || user.role === 'leader') {
-            setActiveMode('command');
+          // Double verify session: google login session vs pin code login checks
+          let user: UserProfile | null = null;
+          if (token.startsWith('google_token_')) {
+            user = await api.getCurrentUser();
           } else {
-            setActiveMode('terrain');
+            // Find verified PIN user profile inside our loaded profiles list
+            const profilesList = await api.getProfiles();
+            const matched = profilesList.find(p => p.id === cachedProfile.id);
+            if (matched) {
+              user = matched;
+            }
           }
-          
-          // Pull down full list payload
-          await handleRefreshFullSync();
+
+          if (user) {
+            setCurrentUser(user);
+            
+            // Setup active role mode
+            if (user.role === 'developer' || user.role === 'leader') {
+              setActiveMode('command');
+            } else {
+              setActiveMode('terrain');
+            }
+            
+            // Pull down full list payload
+            await handleRefreshFullSync();
+          } else {
+            // invalid session
+            clearSession();
+            setCurrentUser(null);
+          }
         } catch (e) {
           // invalid cached token, discard
           clearSession();

@@ -3,12 +3,17 @@ import { onSnapshot, collection, doc, query, where, DocumentData } from 'firebas
 import { db } from '../lib/firebase';
 import { UserProfile, AppSettings, Astronaute, Session, Report, Grade, Promotion, Score, AuditLog } from '../types';
 
-export function useRealtimeUsers() {
+export function useRealtimeUsers(currentUser: UserProfile | null) {
   const [data, setData] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       collection(db, 'profiles'),
@@ -32,17 +37,22 @@ export function useRealtimeUsers() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { users: data, loading, error };
 }
 
-export function useRealtimeAstronautes() {
+export function useRealtimeAstronautes(currentUser: UserProfile | null) {
   const [data, setData] = useState<Astronaute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       collection(db, 'astronautes'),
@@ -66,17 +76,22 @@ export function useRealtimeAstronautes() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { astronautes: data, loading, error };
 }
 
-export function useRealtimeSessions() {
+export function useRealtimeSessions(currentUser: UserProfile | null) {
   const [data, setData] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       collection(db, 'sessions'),
@@ -100,17 +115,22 @@ export function useRealtimeSessions() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { sessions: data, loading, error };
 }
 
-export function useRealtimeReports() {
+export function useRealtimeReports(currentUser: UserProfile | null) {
   const [data, setData] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       collection(db, 'reports'),
@@ -134,17 +154,22 @@ export function useRealtimeReports() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { reports: data, loading, error };
 }
 
-export function useRealtimeGrades() {
+export function useRealtimeGrades(currentUser: UserProfile | null) {
   const [data, setData] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       collection(db, 'grades'),
@@ -169,17 +194,22 @@ export function useRealtimeGrades() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { grades: data, loading, error };
 }
 
-export function useRealtimePromotions() {
+export function useRealtimePromotions(currentUser: UserProfile | null) {
   const [data, setData] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       collection(db, 'promotions'),
@@ -203,17 +233,22 @@ export function useRealtimePromotions() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { promotions: data, loading, error };
 }
 
-export function useRealtimeScores() {
+export function useRealtimeScores(currentUser: UserProfile | null) {
   const [data, setData] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       collection(db, 'scores'),
@@ -237,17 +272,22 @@ export function useRealtimeScores() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { scores: data, loading, error };
 }
 
-export function useRealtimeAppSettings() {
+export function useRealtimeAppSettings(currentUser: UserProfile | null) {
   const [data, setData] = useState<AppSettings>({ summer_pause: false, correction_window_hours: 48 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       doc(db, 'app_settings', 'global'),
@@ -269,17 +309,22 @@ export function useRealtimeAppSettings() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { appSettings: data, loading, error };
 }
 
-export function useRealtimeAuditLogs() {
+export function useRealtimeAuditLogs(currentUser: UserProfile | null) {
   const [data, setData] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     let active = true;
     const unsub = onSnapshot(
       collection(db, 'audit_logs'),
@@ -304,7 +349,8 @@ export function useRealtimeAuditLogs() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [currentUser]);
 
   return { auditLogs: data, loading, error };
 }
+

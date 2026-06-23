@@ -500,6 +500,15 @@ async function startServer() {
     }
 
     const targetUser = data.profiles[idx];
+
+    // Protection to prevent deleting the final 'developer' / 'Dev' profile
+    if (targetUser.role === 'developer' || (targetUser.role as any) === 'Dev') {
+      const remainingDevs = data.profiles.filter(p => p.id !== id && (p.role === 'developer' || (p.role as any) === 'Dev'));
+      if (remainingDevs.length === 0) {
+        return res.status(400).json({ error: "Impossible de supprimer le compte GHOST SYSTEMS. C'est le dernier profil Dev." });
+      }
+    }
+
     data.profiles.splice(idx, 1);
 
     // Filter login sessions

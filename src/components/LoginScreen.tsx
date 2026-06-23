@@ -3,6 +3,8 @@ import { UserProfile } from '../types';
 import { api } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users, Shield, Award, UsersRound, Lock, ArrowLeft, RefreshCw, Delete } from 'lucide-react';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
 
 interface LoginScreenProps {
   allProfiles: UserProfile[];
@@ -21,8 +23,6 @@ export default function LoginScreen({ allProfiles, onLoginSuccess }: LoginScreen
     setGoogleAuthLoading(true);
     setError(null);
     try {
-      const { signInWithPopup } = await import('firebase/auth');
-      const { auth, googleProvider } = await import('../lib/firebase');
       const userCredential = await signInWithPopup(auth, googleProvider);
       const email = userCredential.user.email;
       if (!email) {

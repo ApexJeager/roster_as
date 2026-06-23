@@ -1,4 +1,5 @@
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
+import { seedFirestoreIfEmpty } from './firebase-seeder';
 import { 
   collection, 
   doc, 
@@ -652,7 +653,6 @@ export const api = {
 
   resetDb: async (): Promise<any> => {
     // For safety, clear collections. Since users like to seed, let's re-run seeder inside seeder!
-    const { seedFirestoreIfEmpty } = await import('./firebase-seeder');
     await seedFirestoreIfEmpty();
     return { success: true };
   },
