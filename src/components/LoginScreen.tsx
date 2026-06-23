@@ -20,6 +20,11 @@ export default function LoginScreen({ allProfiles, onLoginSuccess }: LoginScreen
   const [googleAuthLoading, setGoogleAuthLoading] = useState<boolean>(false);
 
   const handleGoogleSignIn = async () => {
+    const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+    if (isIframe) {
+      setError("La connexion via Google nécessite l'ouverture de fenêtres pop-up, ce qui est bloqué au sein des iframes de l'aperçu. Veuillez utiliser un profil d'équipage ci-dessus avec son code PIN (ex: 0000 pour l'ingénieur Ghost Systems, ou 1111 pour le Pasteur Jean-Baptiste), ou ouvrez l'application dans un nouvel onglet en cliquant sur le bouton en haut à droite de l'aperçu.");
+      return;
+    }
     setGoogleAuthLoading(true);
     setError(null);
     try {
@@ -153,42 +158,56 @@ export default function LoginScreen({ allProfiles, onLoginSuccess }: LoginScreen
         </div>
 
         <div className="grid grid-cols-1 gap-3">
-          {allProfiles.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => {
-                setSelectedProfile(p);
-                setPin('');
-                setError(null);
-              }}
-              className="flex items-center justify-between p-4 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl transition duration-150 active:scale-[0.98] cursor-pointer group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-slate-750 flex items-center justify-center border border-slate-700">
-                  {getIconForRole(p.role)}
-                </div>
-                <div className="text-left">
-                  <h4 className="font-bold text-white group-hover:text-amber-400 transition-colors">
-                    {p.full_name}
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    {getRoleLabel(p)}
-                  </p>
+          {allProfiles.length === 0 ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-4 bg-slate-800/40 border border-slate-700/40 rounded-xl animate-pulse">
+                <div className="flex items-center gap-4 w-full">
+                  <div className="w-12 h-12 rounded-lg bg-slate-700/50 shrink-0" />
+                  <div className="space-y-2 w-3/4">
+                    <div className="h-4 bg-slate-700/60 rounded w-1/2 animate-pulse" />
+                    <div className="h-3 bg-slate-700/40 rounded w-1/3 animate-pulse" />
+                  </div>
                 </div>
               </div>
-              
-              {p.assignment && (
-                <span className={`text-[11px] font-bold px-2 py-1 rounded ml-2 ${
-                  p.assignment.groupe === 'Vert' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
-                  p.assignment.groupe === 'Rouge' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
-                  p.assignment.groupe === 'Jaune' ? 'bg-yellow-950 text-yellow-300 border border-yellow-800' :
-                  'bg-sky-950 text-sky-300 border border-sky-800'
-                }`}>
-                  {p.assignment.groupe}
-                </span>
-              )}
-            </button>
-          ))}
+            ))
+          ) : (
+            allProfiles.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setSelectedProfile(p);
+                  setPin('');
+                  setError(null);
+                }}
+                className="flex items-center justify-between p-4 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl transition duration-150 active:scale-[0.98] cursor-pointer group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-slate-750 flex items-center justify-center border border-slate-700">
+                    {getIconForRole(p.role)}
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-bold text-white group-hover:text-amber-400 transition-colors">
+                      {p.full_name}
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      {getRoleLabel(p)}
+                    </p>
+                  </div>
+                </div>
+                
+                {p.assignment && (
+                  <span className={`text-[11px] font-bold px-2 py-1 rounded ml-2 ${
+                    p.assignment.groupe === 'Vert' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                    p.assignment.groupe === 'Rouge' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
+                    p.assignment.groupe === 'Jaune' ? 'bg-yellow-950 text-yellow-300 border border-yellow-800' :
+                    'bg-sky-950 text-sky-300 border border-sky-800'
+                  }`}>
+                    {p.assignment.groupe}
+                  </span>
+                )}
+              </button>
+            ))
+          )}
         </div>
 
         {/* OR Divider */}

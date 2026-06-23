@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { onSnapshot, collection, doc, query, where, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { UserProfile, AppSettings, Astronaute, Session, Report, Grade, Promotion, Score, AuditLog } from '../types';
+import { UserProfile, AppSettings, Astronaute, Onboarding, Session, Report, Grade, Promotion, Score, AuditLog } from '../types';
 
 export function useRealtimeUsers(currentUser: UserProfile | null) {
   const [data, setData] = useState<UserProfile[]>([]);
@@ -54,7 +54,26 @@ export function useRealtimeAstronautes(currentUser: UserProfile | null) {
     }
     setLoading(true);
     let active = true;
-    const unsub = onSnapshot(
+    let rawAstros: Astronaute[] = [];
+    let rawOnboardings: Record<string, Onboarding> = {};
+
+    const checkAndSet = () => {
+      if (!active) return;
+      const merged = rawAstros.map(ast => ({
+        ...ast,
+        onboarding: rawOnboardings[ast.id] || {
+          astronaute_id: ast.id,
+          fridays_done: false,
+          devise: false,
+          verset_officiel: false,
+          livres_nt: false,
+          completed_at: null
+        }
+      }));
+      setData(merged);
+    };
+
+    const unsubAstros = onSnapshot(
       collection(db, 'astronautes'),
       (snap) => {
         if (!active) return;
@@ -62,7 +81,8 @@ export function useRealtimeAstronautes(currentUser: UserProfile | null) {
         snap.forEach((d) => {
           list.push({ ...d.data(), id: d.id } as Astronaute);
         });
-        setData(list);
+        rawAstros = list;
+        checkAndSet();
         setLoading(false);
       },
       (err) => {
@@ -72,9 +92,27 @@ export function useRealtimeAstronautes(currentUser: UserProfile | null) {
         setLoading(false);
       }
     );
+
+    const unsubOnboard = onSnapshot(
+      collection(db, 'onboarding'),
+      (snap) => {
+        if (!active) return;
+        const dict: Record<string, Onboarding> = {};
+        snap.forEach((d) => {
+          dict[d.id] = { ...d.data(), astronaute_id: d.id } as Onboarding;
+        });
+        rawOnboardings = dict;
+        checkAndSet();
+      },
+      (err) => {
+        console.error('Error in useRealtimeOnboarding onSnapshot:', err);
+      }
+    );
+
     return () => {
       active = false;
-      unsub();
+      unsubAstros();
+      unsubOnboard();
     };
   }, [currentUser]);
 

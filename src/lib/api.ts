@@ -12,7 +12,7 @@ import {
   where,
   orderBy
 } from 'firebase/firestore';
-import { UserProfile, AppSettings, Astronaute, Session, Report, Grade, Promotion, Score, AuditLog } from '../types';
+import { UserProfile, AppSettings, Astronaute, Onboarding, Session, Report, Grade, Promotion, Score, AuditLog } from '../types';
 
 // Standard helper to generate a Firestore collection snapshot array
 async function fetchCollection<T>(collectionName: string): Promise<T[]> {
@@ -144,7 +144,29 @@ export const api = {
   },
 
   // Astronautes / Recruits
-  getAstronautes: () => fetchCollection<Astronaute>('astronautes'),
+  getAstronautes: async (): Promise<Astronaute[]> => {
+    try {
+      const astros = await fetchCollection<Astronaute>('astronautes');
+      const onboardings = await fetchCollection<Onboarding>('onboarding');
+      const onboardingMap = new Map(onboardings.map(o => [o.astronaute_id || (o as any).id, o]));
+      return astros.map(ast => ({
+        ...ast,
+        onboarding: onboardingMap.get(ast.id) || {
+          astronaute_id: ast.id,
+          fridays_done: false,
+          devise: false,
+          verset_officiel: false,
+          livres_nt: false,
+          completed_at: null
+        }
+      }));
+    } catch (error: any) {
+      if (error?.message?.toLowerCase().includes('permission') || error?.code === 'permission-denied') {
+        handleFirestoreError(error, OperationType.GET, 'astronautes');
+      }
+      throw error;
+    }
+  },
 
   createAstronaute: async (data: {
     first_name: string;
