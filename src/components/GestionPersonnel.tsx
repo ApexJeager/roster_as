@@ -24,7 +24,7 @@ export default function GestionPersonnel({
 
   // Dev can manage all profiles, standard Leaders can only manage 'pilote', 'copilote', and 'aide'
   const personnelProfiles = React.useMemo(() => {
-    const isDev = currentUser && (currentUser.role === 'developer' || (currentUser.role as any) === 'Dev');
+    const isDev = currentUser && currentUser.role === 'developer';
     if (isDev) {
       return allProfiles;
     }
@@ -34,7 +34,7 @@ export default function GestionPersonnel({
   }, [allProfiles, currentUser]);
 
   const availableRoles = React.useMemo(() => {
-    const isDev = currentUser && (currentUser.role === 'developer' || (currentUser.role as any) === 'Dev');
+    const isDev = currentUser && currentUser.role === 'developer';
     if (isDev) {
       return [
         { value: 'pilote', label: 'Pilote (Chef de cabine)' },
@@ -190,8 +190,8 @@ export default function GestionPersonnel({
 
   const handleDeleteProfile = async (profileId: string) => {
     const profile = allProfiles.find(p => p.id === profileId);
-    if (profile && (profile.role === 'developer' || (profile.role as any) === 'Dev')) {
-      const devCount = allProfiles.filter(p => p.role === 'developer' || (p.role as any) === 'Dev').length;
+    if (profile && profile.role === 'developer') {
+      const devCount = allProfiles.filter(p => p.role === 'developer').length;
       if (devCount <= 1) {
         showToast("Impossible de supprimer le compte GHOST SYSTEMS. C'est le dernier profil Dev.", "danger");
         setProfileToDelete(null);
@@ -470,7 +470,7 @@ export default function GestionPersonnel({
                       <span className="text-xs text-slate-500 font-mono block mt-0.5">{p.email}</span>
                     </div>
                     <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border ${
-                      p.role === 'developer' || (p.role as any) === 'Dev'
+                      p.role === 'developer'
                         ? 'bg-purple-950/40 text-purple-400 border-purple-800/45'
                         : p.role === 'leader'
                         ? 'bg-rose-950/40 text-rose-400 border-rose-800/45'
@@ -558,20 +558,20 @@ export default function GestionPersonnel({
                 </div>
 
                 <div className="flex justify-end pt-1 gap-2">
-                  {currentUser && (currentUser.role === 'developer' || (currentUser.role as any) === 'Dev') && (
+                  {currentUser && currentUser.role === 'developer' && (
                     <button
                       id={`gp-delete-btn-${p.id}`}
                       type="button"
                       onClick={() => setProfileToDelete(p)}
-                      disabled={deletingProfiles[p.id] || (currentUser.id === p.id) || ((p.role === 'developer' || (p.role as any) === 'Dev') && allProfiles.filter(x => x.role === 'developer' || (x.role as any) === 'Dev').length <= 1)}
+                      disabled={deletingProfiles[p.id] || (currentUser.id === p.id) || (p.role === 'developer' && allProfiles.filter(x => x.role === 'developer').length <= 1)}
                       title={
                         currentUser.id === p.id 
                           ? "Vous ne pouvez pas supprimer votre propre profil." 
-                          : ((p.role === 'developer' || (p.role as any) === 'Dev') && allProfiles.filter(x => x.role === 'developer' || (x.role as any) === 'Dev').length <= 1)
+                          : (p.role === 'developer' && allProfiles.filter(x => x.role === 'developer').length <= 1)
                           ? "Impossible de supprimer le seul compte Dev restant."
                           : "Supprimer ce membre"
                       }
-                      className={`text-xs font-bold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition duration-150 ${deletingProfiles[p.id] || currentUser.id === p.id || ((p.role === 'developer' || (p.role as any) === 'Dev') && allProfiles.filter(x => x.role === 'developer' || (x.role as any) === 'Dev').length <= 1) ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 hover:shadow-md text-white cursor-pointer'}`}
+                      className={`text-xs font-bold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition duration-150 ${deletingProfiles[p.id] || currentUser.id === p.id || (p.role === 'developer' && allProfiles.filter(x => x.role === 'developer').length <= 1) ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 hover:shadow-md text-white cursor-pointer'}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Supprimer</span>

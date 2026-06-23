@@ -392,7 +392,7 @@ async function startServer() {
   });
 
   app.post('/api/profiles', (req, res) => {
-    const isDev = req.user.role === 'developer' || (req.user.role as any) === 'Dev';
+    const isDev = req.user.role === 'developer';
     const isLeader = req.user.role === 'leader';
 
     if (!isDev && !isLeader) {
@@ -406,8 +406,8 @@ async function startServer() {
       return res.status(400).json({ error: 'Champs obligatoires manquants : email, full_name, role.' });
     }
 
-    // Protection against privilege escalation: only Dev can assign Leader or Dev role
-    if (role === 'leader' || role === 'developer' || role === 'Dev') {
+    // Protection against privilege escalation: only Dev can assign Leader or developer role
+    if (role === 'leader' || role === 'developer') {
       if (!isDev) {
         return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut créer ou assigner des rôles Leader ou Dev." });
       }
@@ -437,7 +437,7 @@ async function startServer() {
   });
 
   app.put('/api/profiles/:id', (req, res) => {
-    const isDev = req.user.role === 'developer' || (req.user.role as any) === 'Dev';
+    const isDev = req.user.role === 'developer';
     const isLeader = req.user.role === 'leader';
 
     if (!isDev && !isLeader) {
@@ -456,14 +456,14 @@ async function startServer() {
     const profile = data.profiles[idx];
 
     // Protection against privilege escalation when assigning higher roles
-    if (role && (role === 'leader' || role === 'developer' || role === 'Dev')) {
+    if (role && (role === 'leader' || role === 'developer')) {
       if (!isDev) {
         return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut élever un rôle au niveau Leader ou Dev." });
       }
     }
 
-    // Protection against modifying already existing Leader or Dev roles
-    if (profile.role === 'leader' || profile.role === 'developer' || (profile.role as any) === 'Dev') {
+    // Protection against modifying already existing Leader or developer roles
+    if (profile.role === 'leader' || profile.role === 'developer') {
       if (!isDev) {
         return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut modifier un profil Leader ou Dev." });
       }
@@ -486,8 +486,8 @@ async function startServer() {
   });
 
   app.delete('/api/profiles/:id', (req, res) => {
-    // Verify requester role is developer (Dev)
-    if (req.user.role !== 'developer' && (req.user.role as any) !== 'Dev') {
+    // Verify requester role is developer
+    if (req.user.role !== 'developer') {
       return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut supprimer un membre du personnel." });
     }
 
@@ -501,9 +501,9 @@ async function startServer() {
 
     const targetUser = data.profiles[idx];
 
-    // Protection to prevent deleting the final 'developer' / 'Dev' profile
-    if (targetUser.role === 'developer' || (targetUser.role as any) === 'Dev') {
-      const remainingDevs = data.profiles.filter(p => p.id !== id && (p.role === 'developer' || (p.role as any) === 'Dev'));
+    // Protection to prevent deleting the final 'developer' profile
+    if (targetUser.role === 'developer') {
+      const remainingDevs = data.profiles.filter(p => p.id !== id && p.role === 'developer');
       if (remainingDevs.length === 0) {
         return res.status(400).json({ error: "Impossible de supprimer le compte GHOST SYSTEMS. C'est le dernier profil Dev." });
       }

@@ -329,7 +329,7 @@ export default function App() {
   }
 
   return (
-    <div className="relative font-sans antialiased min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
+    <div className="relative font-sans antialiased min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between overflow-x-hidden">
       {/* Toast Alert Portal Box (Group C8) */}
       {toast && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 max-w-sm w-full px-4 z-50">

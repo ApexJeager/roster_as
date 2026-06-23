@@ -1,8 +1,89 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role;
+    }
+
+    function isDeveloper() {
+      return getUserRole() == 'developer';
+    }
+
+    function isLeader() {
+      return getUserRole() == 'leader';
+    }
+
+    // Profiles collection
+    match /profiles/{profileId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (isDeveloper() || isLeader());
+      allow update: if isSignedIn() && (isDeveloper() || (isLeader() && resource.data.role != 'developer' && resource.data.role != 'leader'));
+      allow delete: if isSignedIn() && isDeveloper();
+    }
+
+    // App Settings
+    match /app_settings/global {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isDeveloper() || isLeader());
+    }
+
+    // Astronautes
+    match /astronautes/{astronauteId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Onboarding
+    match /onboarding/{astronauteId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Grades
+    match /grades/{gradeId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isDeveloper();
+    }
+
+    // Promotions
+    match /promotions/{promotionId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Sessions
+    match /sessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Scores
+    match /scores/{scoreId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Reports
+    match /reports/{reportId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Audit Logs
+    match /audit_logs/{logId} {
+      allow read: if isSignedIn() && (isDeveloper() || isLeader());
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    // Test collection
+    match /test/connection {
+      allow read: if true;
     }
   }
 }

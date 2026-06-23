@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserProfile, AppSettings, Astronaute, Session, Score } from '../../types';
+import { UserProfile, AppSettings, Astronaute, Session, Score, ClasseType, GroupeType } from '../../types';
 import { api } from '../../lib/api';
 import { Calendar, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, HelpCircle, Lock, RefreshCw, UserCheck } from 'lucide-react';
 import VisitorCounter from '../../components/VisitorCounter';
@@ -185,6 +185,7 @@ export default function PointageScreen({
       });
       // Update with exact payload
       setSessionScores(prev => prev.map(s => s.astronaute_id === astId ? saved : s));
+      showToast(`Pointage mis à jour pour ${field === 'presence' ? 'la présence' : 'un critère'}.`, 'success');
     } catch (err: any) {
       // Revert on error
       setSessionScores(prev => prev.map(s => s.astronaute_id === astId ? currentScore : s));
@@ -223,6 +224,7 @@ export default function PointageScreen({
         visiteurs: val
       });
       setSessionScores(prev => prev.map(s => s.astronaute_id === astId ? saved : s));
+      showToast("Compteur visiteurs mis à jour.", 'success');
     } catch (err: any) {
       setSessionScores(prev => prev.map(s => s.astronaute_id === astId ? currentScore : s));
       showToast(err.message || "Erreur de sauvegarde", 'danger');
@@ -279,7 +281,7 @@ export default function PointageScreen({
     if (sc.proprete) total += 30;
     if (sc.echarpe) total += 20;
     if (sc.conduite) total += 40;
-    total += (sc.visiteur || 0) * 25;
+    total += (sc.visiteurs || 0) * 25;
     return total;
   };
 
