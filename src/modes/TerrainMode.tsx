@@ -40,7 +40,7 @@ export default function TerrainMode({
   const [activeTab, setActiveTab] = useState<TerrainTabType>('pointage');
 
   // Check if role is developer (Dev)
-  const isDev = currentUser.role === 'developer' || (currentUser.role as any) === 'Dev';
+  const isDev = currentUser.role === 'developer';
 
   const [devClass, setDevClass] = useState<ClasseType>('Aventuriers');
   const [devGroup, setDevGroup] = useState<GroupeType>('Vert');

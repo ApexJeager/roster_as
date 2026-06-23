@@ -1163,7 +1163,7 @@ export default function CommandMode({
                             if (sc.proprete) pts += 30;
                             if (sc.echarpe) pts += 20;
                             if (sc.conduite) pts += 40;
-                            pts += (sc.visiteur || 0) * 25;
+                            pts += (sc.visiteurs || 0) * 25;
 
                             return (
                               <tr key={sc.id} className="hover:bg-slate-850/30">

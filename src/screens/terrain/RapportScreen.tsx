@@ -165,7 +165,7 @@ export default function RapportScreen({
       if (sc.proprete) sum += 30;
       if (sc.echarpe) sum += 20;
       if (sc.conduite) sum += 40;
-      sum += (sc.visiteur || 0) * 25;
+      sum += (sc.visiteurs || 0) * 25;
     });
     return sum;
   }, [sessionScores]);
