@@ -428,13 +428,14 @@ export default function CommandMode({
       const candidates = astronautes.filter(a => a.classe === migrationTargetClass && a.status === 'astronaute_actif');
       setMigrationCandidateIds(candidates.map(c => c.id));
       
-      const previewRes = await api.runClassMigration(
-        migrationTargetClass,
-        migrationPromoteTo,
-        false, // preview only
-        candidates.map(c => c.id),
-        migrationReason
-      );
+      const previewRes = await api.runClassMigration({
+        target_class: migrationTargetClass,
+        promote_to_class: migrationPromoteTo,
+        confirm: false,
+        candidate_ids: candidates.map(c => c.id),
+        reason: migrationReason,
+        actor_id: currentUser.id
+      });
       setMigrationPreview(previewRes);
     } catch (e: any) {
       showToast(e.message || "Erreur lors de la simulation.", 'danger');
@@ -450,13 +451,14 @@ export default function CommandMode({
     }
     setIsMigrating(true);
     try {
-      const res = await api.runClassMigration(
-        migrationTargetClass,
-        migrationPromoteTo,
-        true, // confirm
-        migrationCandidateIds,
-        migrationReason
-      );
+      const res = await api.runClassMigration({
+        target_class: migrationTargetClass,
+        promote_to_class: migrationPromoteTo,
+        confirm: true,
+        candidate_ids: migrationCandidateIds,
+        reason: migrationReason,
+        actor_id: currentUser.id
+      });
       showToast(res.message || "Migration terminée.", 'success');
       setMigrationPreview(null);
       await onRefresh();
@@ -1234,7 +1236,7 @@ export default function CommandMode({
                                 </td>
 
                                 {/* Visiteur */}
-                                <td className="py-2 text-center font-mono font-bold text-slate-350">{sc.visiteur || 0}</td>
+                                <td className="py-2 text-center font-mono font-bold text-slate-350">{sc.visiteurs || 0}</td>
 
                                 {/* Sum points */}
                                 <td className="py-2 text-right font-mono font-bold text-slate-300">+{pts} pts</td>

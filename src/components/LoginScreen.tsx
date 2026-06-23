@@ -41,22 +41,7 @@ export default function LoginScreen({ allProfiles, onLoginSuccess }: LoginScreen
         const mockToken = 'google_token_' + Date.now();
         onLoginSuccess(matchedProfile, mockToken);
       } else {
-        // If they are justinberthonn@gmail.com, they should get immediate access as Developer
-        if (email.toLowerCase() === 'justinberthonn@gmail.com') {
-          const defaultAdminProfile: UserProfile = {
-            id: 'justin_admin',
-            email: 'justinberthonn@gmail.com',
-            full_name: 'Justin Berthonn',
-            role: 'developer',
-            can_enter_data: true,
-            pin: '9999',
-            assignment: null
-          };
-          const mockToken = 'google_token_' + Date.now();
-          onLoginSuccess(defaultAdminProfile, mockToken);
-        } else {
-          throw new Error(`Aucun profil d'équipage ASBF n'est lié à l'adresse email [${email}]. Veuillez l'ajouter ou utiliser le PIN.`);
-        }
+        throw new Error(`Aucun profil d'équipage ASBF n'est lié à l'adresse email [${email}]. Veuillez l'ajouter ou utiliser le PIN.`);
       }
     } catch (err: any) {
       console.error("Google sign in error:", err);
