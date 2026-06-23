@@ -326,17 +326,12 @@ async function startServer() {
       }
     }
 
-    // Ultimate fallback to dev_user if absolute zero auth is provided (ensures robust initial state)
-    if (!authUser) {
-      authUser = data.profiles[0];
-    }
-
-    req.user = authUser;
+    req.user = authUser!;
 
     // Mutating Endpoint Check: Any write operations MUST supply a valid token in login_sessions
     const isWrite = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method);
-    // Ignore initial login endpoint and reset-db
-    if (isWrite && req.path !== '/api/login' && req.path !== '/api/admin/reset-db') {
+    // Ignore initial login endpoint
+    if (isWrite && req.path !== '/api/login') {
       if (!sessionToken) {
         return res.status(401).json({ error: 'Token de session absent. Veuillez vous connecter.' });
       }
@@ -1280,6 +1275,9 @@ async function startServer() {
 
   // Quick Roster reset to Seed state (useful for tester review)
   app.post('/api/admin/reset-db', (req, res) => {
+    if (req.user?.role !== 'developer') {
+      return res.status(403).json({ error: "Autorisation refusée. Seul l'ingénieur GHOST SYSTEMS (Dev) peut réinitialiser la base de données." });
+    }
     const freshDb: DatabaseSchema = {
       profiles: DEFAULT_PROFILES,
       astronautes: DEFAULT_ASTRONAUTES,
